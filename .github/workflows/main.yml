@@ -1,51 +1,53 @@
-# This workflow builds the SilentXMRMiner .NET Framework project.
-# It uses GitHub Actions to run the build on a Windows virtual machine.
+# This workflow builds the SilentXMRMiner project using .NET on Windows.
+# It will run automatically when changes are pushed to the 'main' branch
+# or when a pull request is opened against the 'main' branch.
+
 name: Build SilentXMRMiner
 
 on:
   push:
     branches:
-      - master # Trigger on pushes to the main branch
+      - main
   pull_request:
     branches:
-      - master # Trigger on pull requests to the main branch
+      - main
 
 jobs:
   build:
-    runs-on: windows-latest # Crucial: .NET Framework requires a Windows environment
+    # Use a Windows environment, as .NET projects are typically built on Windows.
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4 # Action to clone the repository code
+    - name: Checkout Repository
+      # Clones the repository to the runner.
+      uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      # This action finds the appropriate MSBuild.exe on the Windows runner
-      # and adds it to the system's PATH, so 'msbuild' command can be used.
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup .NET SDK
+      # Installs the .NET SDK. Adjust the version if your project targets a specific .NET version (e.g., '6.0.x', '7.0.x', '8.0.x').
+      # The 'windows-latest' runner usually has several .NET versions pre-installed, but specifying ensures consistency.
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # Or the specific .NET version your project targets
 
-    - name: Setup NuGet
-      # This action ensures the NuGet CLI is available for package restoration.
-      uses: NuGet/setup-nuget@v2
+    - name: Restore NuGet Packages
+      # Restores all NuGet packages required by the solution.
+      # This is equivalent to 'dotnet restore' command.
+      run: dotnet restore SilentXMRMiner.sln # Assuming SilentXMRMiner.sln is the solution file name
 
-    - name: Restore NuGet packages
-      # Runs 'nuget restore' on the solution file to download all dependencies.
-      # The solution file is expected to be at the root of the repository.
-      run: nuget restore SilentXMRMiner.sln
+    - name: Build Project
+      # Builds the project in Release configuration.
+      # The '--no-restore' flag prevents re-restoring packages, as they are already restored in the previous step.
+      # The output will be in the 'bin/Release' directory within the project folder.
+      run: dotnet build SilentXMRMiner.sln --configuration Release --no-restore
 
-    - name: Build solution
-      # Uses MSBuild.exe to build the solution in Release configuration.
-      # The /p:Configuration=Release argument sets the build configuration.
-      run: msbuild SilentXMRMiner.sln /p:Configuration=Release
-
-    - name: Upload Build Artifacts (Optional)
-      # This step zips up the compiled output and makes it available for download
-      # from the GitHub Actions run summary page.
+    - name: Publish Build Artifacts
+      # Optional: Uploads the compiled executable as a workflow artifact.
+      # This makes the build output easily downloadable from the GitHub Actions run summary.
+      # Adjust the 'path' to match where your compiled .exe is located after building.
+      # Common paths are 'SilentXMRMiner/bin/Release/net8.0/' or similar, depending on your project structure and target framework.
       uses: actions/upload-artifact@v4
       with:
-        name: SilentXMRMiner-Build-Output
-        # Adjust this path based on where your compiled executable/DLLs are.
-        # Common paths are bin/Release, bin/x64/Release, etc.
-        # You might need to check the project structure after a successful build.
-        path: SilentXMRMiner\SilentXMRMiner\bin\Release\ # Assuming this is the output path
-        # If the above path is incorrect, you might need to find the actual output folder
-        # by looking at the project file or running a local build (if possible).
+        name: SilentXMRMiner-Executable
+        path: SilentXMRMiner/bin/Release/net8.0/ # Adjust this path to your actual build output directory
+        # If your project is a single .exe, you might specify: path: SilentXMRMiner/bin/Release/net8.0/SilentXMRMiner.exe
+        # Or if it's a self-contained deployment: path: SilentXMRMiner/bin/Release/net8.0/publish/
