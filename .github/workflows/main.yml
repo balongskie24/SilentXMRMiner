@@ -1,0 +1,51 @@
+# This workflow builds the SilentXMRMiner .NET Framework project.
+# It uses GitHub Actions to run the build on a Windows virtual machine.
+name: Build SilentXMRMiner
+
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the main branch
+  pull_request:
+    branches:
+      - main # Trigger on pull requests to the main branch
+
+jobs:
+  build:
+    runs-on: windows-latest # Crucial: .NET Framework requires a Windows environment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Action to clone the repository code
+
+    - name: Setup MSBuild
+      # This action finds the appropriate MSBuild.exe on the Windows runner
+      # and adds it to the system's PATH, so 'msbuild' command can be used.
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      # This action ensures the NuGet CLI is available for package restoration.
+      uses: NuGet/setup-nuget@v2
+
+    - name: Restore NuGet packages
+      # Runs 'nuget restore' on the solution file to download all dependencies.
+      # The solution file is expected to be at the root of the repository.
+      run: nuget restore SilentXMRMiner.sln
+
+    - name: Build solution
+      # Uses MSBuild.exe to build the solution in Release configuration.
+      # The /p:Configuration=Release argument sets the build configuration.
+      run: msbuild SilentXMRMiner.sln /p:Configuration=Release
+
+    - name: Upload Build Artifacts (Optional)
+      # This step zips up the compiled output and makes it available for download
+      # from the GitHub Actions run summary page.
+      uses: actions/upload-artifact@v4
+      with:
+        name: SilentXMRMiner-Build-Output
+        # Adjust this path based on where your compiled executable/DLLs are.
+        # Common paths are bin/Release, bin/x64/Release, etc.
+        # You might need to check the project structure after a successful build.
+        path: SilentXMRMiner\SilentXMRMiner\bin\Release\ # Assuming this is the output path
+        # If the above path is incorrect, you might need to find the actual output folder
+        # by looking at the project file or running a local build (if possible).
